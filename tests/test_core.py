@@ -7,9 +7,9 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.database import Base
-from app.models import MediaItem, ScheduleRule
+from app.models import ClientOutboxEvent, MediaItem, ScheduleRule
 from app.schemas import PlaylistItemInput, ScheduleCreate
-from app.services import ensure_media_code, window_matches
+from app.services import ensure_media_code, make_manifest_media_urls_absolute, send_client_event_or_queue, set_settings, verify_registration_key, window_matches
 
 
 class CoreBehaviorTests(unittest.TestCase):
@@ -99,6 +99,48 @@ class CoreBehaviorTests(unittest.TestCase):
         self.assertTrue(window_matches(datetime(2026, 5, 4, 12, 0), schedule))
         self.assertTrue(window_matches(datetime(2027, 5, 10, 12, 0), schedule))
         self.assertFalse(window_matches(datetime(2027, 5, 11, 12, 0), schedule))
+
+    def test_registration_key_is_required_when_configured(self):
+        engine = create_engine(
+            "sqlite:///:memory:",
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+        )
+        try:
+            Base.metadata.create_all(bind=engine)
+            SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+            with SessionLocal() as db:
+                verify_registration_key(db, None)
+                set_settings(db, {"client_registration_key": "secret"})
+                with self.assertRaises(PermissionError):
+                    verify_registration_key(db, None)
+                verify_registration_key(db, "secret")
+        finally:
+            engine.dispose()
+
+    def test_manifest_relative_media_urls_become_absolute(self):
+        manifest = {"media": [{"source_url": "/media/promo.mp4"}, {"source_url": "https://cdn.example.com/a.mp4"}]}
+        result = make_manifest_media_urls_absolute(manifest, "https://central.example.com/base")
+        self.assertEqual(result["media"][0]["source_url"], "https://central.example.com/base/media/promo.mp4")
+        self.assertEqual(result["media"][1]["source_url"], "https://cdn.example.com/a.mp4")
+
+    def test_client_event_is_queued_when_delivery_fails(self):
+        engine = create_engine(
+            "sqlite:///:memory:",
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+        )
+        try:
+            Base.metadata.create_all(bind=engine)
+            SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+            with SessionLocal() as db:
+                set_settings(db, {"central_base_url": "http://127.0.0.1:1", "client_token": "token"})
+                send_client_event_or_queue(db, "playback", "/api/client-events/playback", {"client_code": "c1"})
+                queued = db.query(ClientOutboxEvent).one()
+                self.assertEqual(queued.event_type, "playback")
+                self.assertEqual(queued.status, "pending")
+        finally:
+            engine.dispose()
 
 
 if __name__ == "__main__":

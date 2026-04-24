@@ -79,13 +79,16 @@ run.bat
 登入 client 本機 `/admin` 後設定：
 
 - `central_base_url`：中央端網址，例如 `http://central-server:8080`
+- `public_base_url`：中央端可被 client 存取的公開 URL；若中央與 client 不在同一台，建議填寫
 - `client_code`：唯一代碼，例如 `branch-a-player-01`
 - `client_name`：顯示名稱，例如 `台北一店播放器 01`
 - `client_site_name`：站點名稱，用於 `site` target
 - `client_group_name`：群組名稱，用於 `group` target
+- `client_registration_key`：client 首次註冊金鑰；中央端與 client 端需設定相同值，留空則不檢查
 - `sync_interval_seconds`：同步間隔，最低 30 秒；正式環境建議 300 秒以上
 
 第一次按「同步後台並下載」時，client 會向中央端註冊並取得 `client_token`，之後 manifest、心跳與事件回報會帶 token。
+若中央暫時離線，播放完成與同步結果會先寫入 client 本機 outbox，下一次同步成功時補送。
 
 ## 4. 連線與防火牆
 
@@ -150,6 +153,6 @@ msedge.exe --kiosk http://127.0.0.1:8080/ --edge-kiosk-type=fullscreen --no-firs
 - client 播放本機 `storage/media/`，不要讓 300 台直接從中央 FastAPI 串流影片
 - 中央端只承擔控制面：manifest、版本、client 狀態與事件回報
 - 影片檔案服務建議獨立為 Nginx/IIS/NAS/S3 相容儲存
-- 中央資料庫正式化時建議改為 PostgreSQL 或 SQL Server
+- 預設資料庫仍是免安裝 SQLite；中央資料庫正式化時可改為 PostgreSQL。SQL Server 不列入優先支援
 
 完整架構請看 [中央管理端 + 本地 Client 架構草案](CENTRAL_CLIENT_ARCHITECTURE.md)。

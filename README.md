@@ -128,8 +128,10 @@ run-admin.bat
   - `POST /api/client-events/sync-result`
 - `client` 模式會：
   - 依 `central_base_url`、`client_code`、`client_name` 自動註冊
+  - 若設定 `client_registration_key`，註冊時會送出 `X-Registration-Key`
   - 比對 `manifest_version` 後再做差異同步
   - 將影片下載到本機 `storage/media/`
+  - 中央暫時離線時，播放與同步事件會先進本機 outbox，之後補送
   - 以前台播放器讀取本機檔案播放
 
 ## Targeting 規則

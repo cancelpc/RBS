@@ -122,6 +122,8 @@ class SettingsPayload(BaseModel):
     client_name: str = ""
     client_site_name: str = ""
     client_group_name: str = ""
+    client_registration_key: str = ""
+    public_base_url: str = ""
 
 
 class AdminLoginPayload(BaseModel):

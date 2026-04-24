@@ -64,7 +64,7 @@ client 端只做：
 
 - 反向代理：Nginx 或 IIS
 - API：FastAPI
-- DB：PostgreSQL 或 SQL Server
+- DB：預設可使用免安裝 SQLite；中央端擴大時再改 PostgreSQL
 - 物件儲存或檔案服務：NAS、SMB、S3 相容儲存、或 Nginx 靜態檔案目錄
 
 ### 2.2 本地 Client
@@ -236,7 +236,7 @@ client 播放時，不應每 15 秒回中央問「現在該播什麼」。
 - `completed_at`
 - `manifest_version`
 
-若中央暫時離線，可先寫本機 queue，稍後補送。
+若中央暫時離線，可先寫本機 queue，稍後補送。目前程式已用 SQLite `client_outbox_events` 實作播放完成與同步結果的補送佇列。
 
 ## 7. 中央端新增 API 建議
 
@@ -298,6 +298,7 @@ client 播放時，不應每 15 秒回中央問「現在該播什麼」。
 至少要有：
 
 - 每台 client 的裝置金鑰或 token
+- 首次註冊的 shared registration key
 - 中央 API 的驗證機制
 - HTTPS
 
@@ -346,6 +347,8 @@ client 播放時，不應每 15 秒回中央問「現在該播什麼」。
 
 - `Nginx/IIS + FastAPI + PostgreSQL`
 - 檔案服務獨立於 API
+
+目前實作預設使用免安裝 SQLite，適合 MVP 與本機 client；中央端擴大時可再改接 PostgreSQL。SQL Server 不列入優先支援。
 
 Client 端：
 

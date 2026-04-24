@@ -149,10 +149,12 @@
   "timezone": "Asia/Taipei",
   "sync_interval_seconds": 300,
   "central_base_url": "https://central.example.com",
+  "public_base_url": "https://central.example.com",
   "client_code": "client-a",
   "client_name": "台北一店播放器",
   "client_site_name": "taipei-1",
   "client_group_name": "branch-a",
+  "client_registration_key": "shared-registration-key",
   "latest_version": "0.2.0",
   "latest_package_url": "https://example.com/banner-system.zip"
 }
@@ -290,6 +292,7 @@
 ### `POST /api/clients/register`
 
 - client 首次註冊
+- 若中央端設定了 `client_registration_key`，請帶 `X-Registration-Key` header，值需相同
 - 成功後回傳：
   - `client_code`
   - `client_token`
@@ -316,10 +319,12 @@
 ### `POST /api/client-events/playback`
 
 - 回報播放完成事件
+- 若中央暫時離線，client 會先寫入本機 outbox，下一次同步成功時補送
 
 ### `POST /api/client-events/sync-result`
 
 - 回報同步結果
+- 若中央暫時離線，client 會先寫入本機 outbox，下一次同步成功時補送
 
 ## 10. Client 本機匯入 API
 

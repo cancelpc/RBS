@@ -9,7 +9,7 @@ import time
 from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import requests
@@ -20,12 +20,24 @@ from app.config import (
     APP_ROLE,
     APP_VERSION,
     DEFAULT_CENTRAL_BASE_URL,
+    DEFAULT_CLIENT_REGISTRATION_KEY,
+    DEFAULT_PUBLIC_BASE_URL,
     DEFAULT_SYNC_INTERVAL_SECONDS,
     DEFAULT_TIMEZONE,
     MANIFEST_DIR,
     MEDIA_DIR,
 )
-from app.models import AppSetting, Client, ClientEvent, ManifestSnapshot, MediaItem, Playlist, PlaylistItem, ScheduleRule
+from app.models import (
+    AppSetting,
+    Client,
+    ClientEvent,
+    ClientOutboxEvent,
+    ManifestSnapshot,
+    MediaItem,
+    Playlist,
+    PlaylistItem,
+    ScheduleRule,
+)
 
 
 SYNC_STATE: dict[str, Any] = {
@@ -73,6 +85,8 @@ def setting_defaults() -> dict[str, str]:
         "client_name": "",
         "client_site_name": "",
         "client_group_name": "",
+        "client_registration_key": DEFAULT_CLIENT_REGISTRATION_KEY,
+        "public_base_url": DEFAULT_PUBLIC_BASE_URL,
         "client_token": "",
         "current_manifest_version": "",
         "manifest_scope": "global",
@@ -358,12 +372,20 @@ def replace_playlist_items(db: Session, playlist: Playlist, items: list[dict[str
 def media_public_url(settings: dict[str, str], item: MediaItem) -> str:
     if item.source_url.startswith("http://") or item.source_url.startswith("https://"):
         return item.source_url
-    central_base = settings.get("central_base_url", "").rstrip("/")
-    if item.local_file_name and central_base:
-        return f"{central_base}/media/{item.local_file_name}"
+    public_base = (settings.get("public_base_url") or settings.get("central_base_url") or "").rstrip("/")
+    if item.local_file_name and public_base:
+        return f"{public_base}/media/{item.local_file_name}"
     if item.local_file_name:
         return f"/media/{item.local_file_name}"
     return item.source_url
+
+
+def make_manifest_media_urls_absolute(manifest: dict[str, Any], central_base: str) -> dict[str, Any]:
+    for item in manifest.get("media", []):
+        source_url = item.get("source_url")
+        if isinstance(source_url, str) and source_url.startswith("/"):
+            item["source_url"] = urljoin(f"{central_base}/", source_url.lstrip("/"))
+    return manifest
 
 
 def normalize_target_scope(value: str | None) -> str:
@@ -782,12 +804,7 @@ def report_sync_result_to_central(db: Session, summary: dict[str, Any], status: 
         "status": status,
         "summary": summary,
     }
-    requests.post(
-        f"{central_base}/api/client-events/sync-result",
-        json=payload,
-        headers=central_headers(settings),
-        timeout=15,
-    ).raise_for_status()
+    send_client_event_or_queue(db, "sync-result", "/api/client-events/sync-result", payload)
 
 
 def heartbeat_to_central(db: Session, player_status: str | None = None) -> None:
@@ -829,7 +846,10 @@ def register_client_with_central(db: Session) -> dict[str, Any]:
         "group_name": settings.get("client_group_name") or None,
         "app_version": APP_VERSION,
     }
-    response = requests.post(f"{central_base}/api/clients/register", json=payload, timeout=15)
+    headers = {}
+    if settings.get("client_registration_key"):
+        headers["X-Registration-Key"] = settings["client_registration_key"]
+    response = requests.post(f"{central_base}/api/clients/register", json=payload, headers=headers, timeout=15)
     response.raise_for_status()
     result = response.json()
     set_settings(
@@ -879,13 +899,14 @@ def pull_manifest_and_sync(db: Session) -> dict[str, Any]:
         timeout=30,
     )
     manifest_response.raise_for_status()
-    manifest = manifest_response.json()
+    manifest = make_manifest_media_urls_absolute(manifest_response.json(), central_base)
 
     imported = import_client_manifest(db, manifest)
     media_summary = sync_manifest_media(db)
     set_settings(db, {"last_sync_status": "success"})
     result = {"metadata": metadata, "imported": imported, "media": media_summary}
     try:
+        flush_client_outbox(db)
         report_sync_result_to_central(db, result, "success")
         heartbeat_to_central(db, player_status="sync-success")
     except Exception:
@@ -1016,12 +1037,73 @@ def report_playback_event(db: Session, data: dict[str, Any]) -> None:
         "completed_at": data["completed_at"],
         "manifest_version": settings.get("current_manifest_version") or None,
     }
-    requests.post(
-        f"{central_base}/api/client-events/playback",
-        json=payload,
-        headers=central_headers(settings),
-        timeout=15,
-    ).raise_for_status()
+    send_client_event_or_queue(db, "playback", "/api/client-events/playback", payload)
+
+
+def queue_client_event(db: Session, event_type: str, endpoint: str, payload: dict[str, Any], error: str) -> None:
+    db.add(
+        ClientOutboxEvent(
+            event_type=event_type,
+            endpoint=endpoint,
+            payload_json=json.dumps(payload, ensure_ascii=False),
+            status="pending",
+            attempt_count=1,
+            last_error=error,
+        )
+    )
+    db.commit()
+
+
+def send_client_event_or_queue(db: Session, event_type: str, endpoint: str, payload: dict[str, Any]) -> None:
+    settings = get_settings(db)
+    central_base = settings.get("central_base_url", "").rstrip("/")
+    if not central_base or not settings.get("client_token"):
+        return
+    try:
+        requests.post(
+            f"{central_base}{endpoint}",
+            json=payload,
+            headers=central_headers(settings),
+            timeout=15,
+        ).raise_for_status()
+    except Exception as exc:  # noqa: BLE001
+        queue_client_event(db, event_type, endpoint, payload, str(exc))
+
+
+def flush_client_outbox(db: Session, limit: int = 50) -> dict[str, int]:
+    settings = get_settings(db)
+    central_base = settings.get("central_base_url", "").rstrip("/")
+    if not central_base or not settings.get("client_token"):
+        return {"sent": 0, "failed": 0}
+    events = (
+        db.execute(
+            select(ClientOutboxEvent)
+            .where(ClientOutboxEvent.status == "pending")
+            .order_by(ClientOutboxEvent.id.asc())
+            .limit(limit)
+        )
+        .scalars()
+        .all()
+    )
+    result = {"sent": 0, "failed": 0}
+    for event in events:
+        payload = json.loads(event.payload_json)
+        try:
+            requests.post(
+                f"{central_base}{event.endpoint}",
+                json=payload,
+                headers=central_headers(settings),
+                timeout=15,
+            ).raise_for_status()
+            event.status = "sent"
+            event.last_error = None
+            result["sent"] += 1
+        except Exception as exc:  # noqa: BLE001
+            event.attempt_count += 1
+            event.last_error = str(exc)
+            result["failed"] += 1
+    db.commit()
+    return result
 
 
 def get_or_create_client(db: Session, client_code: str, default_name: str) -> Client:
@@ -1052,6 +1134,12 @@ def register_client(db: Session, payload: dict[str, Any]) -> dict[str, Any]:
         "latest_version": settings["latest_version"],
         "latest_package_url": settings["latest_package_url"],
     }
+
+
+def verify_registration_key(db: Session, provided_key: str | None) -> None:
+    required_key = get_settings(db).get("client_registration_key", "")
+    if required_key and provided_key != required_key:
+        raise PermissionError("client 註冊金鑰錯誤。")
 
 
 def verify_client_token(db: Session, client_code: str, client_token: str | None) -> Client:
@@ -1144,6 +1232,22 @@ def ensure_schema(session_factory) -> None:
             db.execute(text("ALTER TABLE schedule_rules ADD COLUMN start_date VARCHAR(10)"))
         if "end_date" not in schedule_columns:
             db.execute(text("ALTER TABLE schedule_rules ADD COLUMN end_date VARCHAR(10)"))
+        outbox_columns = {row[1] for row in db.execute(text("PRAGMA table_info(client_outbox_events)")).fetchall()}
+        if not outbox_columns:
+            db.execute(
+                text(
+                    "CREATE TABLE IF NOT EXISTS client_outbox_events ("
+                    "id INTEGER NOT NULL PRIMARY KEY, "
+                    "event_type VARCHAR(50) NOT NULL, "
+                    "endpoint VARCHAR(255) NOT NULL, "
+                    "payload_json TEXT NOT NULL, "
+                    "status VARCHAR(20) NOT NULL DEFAULT 'pending', "
+                    "attempt_count INTEGER NOT NULL DEFAULT 0, "
+                    "last_error TEXT, "
+                    "created_at DATETIME NOT NULL, "
+                    "updated_at DATETIME NOT NULL)"
+                )
+            )
         db.execute(text("UPDATE playlists SET target_scope = 'global' WHERE target_scope IS NULL OR target_scope = ''"))
         db.execute(text("UPDATE schedule_rules SET target_scope = 'global' WHERE target_scope IS NULL OR target_scope = ''"))
         db.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_media_items_media_code ON media_items (media_code)"))

@@ -50,6 +50,7 @@ from app.services import (
     set_settings,
     start_sync_loop,
     sync_local_media,
+    verify_registration_key,
     version_info,
 )
 
@@ -517,10 +518,15 @@ def get_clients(
 @app.post("/api/clients/register")
 def api_register_client(
     payload: ClientRegisterPayload,
+    x_registration_key: str | None = Header(default=None),
     _role: bool = Depends(require_role("central")),
     db: Session = Depends(get_db),
 ):
-    return register_client(db, payload.model_dump())
+    try:
+        verify_registration_key(db, x_registration_key)
+        return register_client(db, payload.model_dump())
+    except PermissionError as exc:
+        raise HTTPException(status_code=401, detail=str(exc)) from exc
 
 
 @app.post("/api/clients/heartbeat")

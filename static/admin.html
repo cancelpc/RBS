@@ -265,6 +265,8 @@
             <label>時區<input id="settings-timezone" value="Asia/Taipei"></label>
             <label>同步秒數<input id="settings-sync-interval" value="300" type="number" min="30"></label>
             <label>中央管理端 URL<input id="settings-central-base-url" placeholder="https://central.example.com"></label>
+            <label>公開服務 URL<input id="settings-public-base-url" placeholder="https://central.example.com"></label>
+            <label>Client 註冊金鑰<input id="settings-registration-key" type="password" placeholder="中央與 client 需相同"></label>
             <label>Client 代碼<input id="settings-client-code" placeholder="例如：client-a"></label>
             <label>Client 名稱<input id="settings-client-name" placeholder="例如：台北一店播放器"></label>
             <label>站點名稱<input id="settings-client-site-name" placeholder="例如：taipei-1"></label>
@@ -547,6 +549,8 @@
       document.getElementById("settings-timezone").value = settings.timezone || "Asia/Taipei";
       document.getElementById("settings-sync-interval").value = settings.sync_interval_seconds || 300;
       document.getElementById("settings-central-base-url").value = settings.central_base_url || settings.upstream_manifest_url || "";
+      document.getElementById("settings-public-base-url").value = settings.public_base_url || "";
+      document.getElementById("settings-registration-key").value = settings.client_registration_key || "";
       document.getElementById("settings-client-code").value = settings.client_code || "";
       document.getElementById("settings-client-name").value = settings.client_name || "";
       document.getElementById("settings-client-site-name").value = settings.client_site_name || "";
@@ -801,6 +805,8 @@
           sync_interval_seconds: Number(document.getElementById("settings-sync-interval").value),
           central_base_url: document.getElementById("settings-central-base-url").value,
           upstream_manifest_url: document.getElementById("settings-central-base-url").value,
+          public_base_url: document.getElementById("settings-public-base-url").value,
+          client_registration_key: document.getElementById("settings-registration-key").value,
           client_code: document.getElementById("settings-client-code").value,
           client_name: document.getElementById("settings-client-name").value,
           client_site_name: document.getElementById("settings-client-site-name").value,

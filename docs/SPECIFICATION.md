@@ -122,7 +122,7 @@
 - 已提供本機多檔上傳，但未做完整檔案格式與惡意檔掃描
 - 無播放紀錄報表
 - 無自動覆蓋升級能力
-- 中央端目前仍使用 SQLite；正式多 client 大型佈署建議改為 PostgreSQL 或 SQL Server
+- 中央端目前仍使用 SQLite；正式多 client 大型佈署可改為 PostgreSQL。SQL Server 不列入優先支援
 - 中央端不應承擔大量影片串流，影片檔案服務應與 API 分離
 
 ## 5. 後續建議需求
