@@ -215,6 +215,7 @@
                 <label>開始日期<input id="schedule-start-date" type="date"></label>
                 <label>結束日期<input id="schedule-end-date" type="date"></label>
               </div>
+              <div class="small">起訖日可留空；有設定時包含當日。</div>
               <label class="checkbox-label"><input type="checkbox" id="schedule-no-end-date" checked onchange="toggleScheduleEndDate()"> 無結束日期</label>
               <div class="dual-grid">
                 <label>開始時間<input id="schedule-start" value="08:00"></label>
@@ -397,7 +398,10 @@
     }
 
     function scheduleDateLabel(item) {
-      return `${item.start_date || "1970-01-01"} - ${item.end_date || "無結束日期"}`;
+      if (item.start_date && item.end_date) return `${item.start_date} - ${item.end_date}`;
+      if (item.start_date) return `${item.start_date} 起`;
+      if (item.end_date) return `至 ${item.end_date}`;
+      return "無期限";
     }
 
     function renderScheduleList() {
@@ -720,7 +724,7 @@
       document.getElementById("schedule-name").value = "";
       document.getElementById("schedule-target-scope").value = "global";
       document.getElementById("schedule-target-code").value = "";
-      document.getElementById("schedule-start-date").value = todayInputValue();
+      document.getElementById("schedule-start-date").value = "";
       document.getElementById("schedule-no-end-date").checked = true;
       toggleScheduleEndDate();
       document.getElementById("schedule-start").value = "08:00";
@@ -746,7 +750,7 @@
           target_scope: document.getElementById("schedule-target-scope").value,
           target_code: document.getElementById("schedule-target-code").value.trim() || null,
           weekdays: selectedWeekdays,
-          start_date: document.getElementById("schedule-start-date").value,
+          start_date: document.getElementById("schedule-start-date").value || null,
           end_date: document.getElementById("schedule-no-end-date").checked ? null : (document.getElementById("schedule-end-date").value || null),
           start_time: document.getElementById("schedule-start").value,
           end_time: document.getElementById("schedule-end").value,
@@ -768,7 +772,7 @@
       document.getElementById("schedule-playlist-id").value = String(item.playlist_id);
       document.getElementById("schedule-target-scope").value = item.target_scope || "global";
       document.getElementById("schedule-target-code").value = item.target_code || "";
-      document.getElementById("schedule-start-date").value = item.start_date || todayInputValue();
+      document.getElementById("schedule-start-date").value = item.start_date || "";
       document.getElementById("schedule-no-end-date").checked = !item.end_date;
       document.getElementById("schedule-end-date").value = item.end_date || "";
       toggleScheduleEndDate();

@@ -50,7 +50,7 @@ class ScheduleCreate(BaseModel):
     target_scope: str = Field(default="global", pattern=r"^(global|group|site)$")
     target_code: str | None = Field(default=None, max_length=200)
     weekdays: list[int] = Field(default_factory=lambda: [0, 1, 2, 3, 4, 5, 6])
-    start_date: str = Field(default="1970-01-01", pattern=r"^\d{4}-\d{2}-\d{2}$")
+    start_date: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
     end_date: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
     start_time: str = Field(pattern=r"^\d{2}:\d{2}$")
     end_time: str = Field(pattern=r"^\d{2}:\d{2}$")
@@ -89,7 +89,11 @@ class ScheduleCreate(BaseModel):
 
     @model_validator(mode="after")
     def validate_date_range(self) -> "ScheduleCreate":
-        if self.end_date is not None and date.fromisoformat(self.end_date) < date.fromisoformat(self.start_date):
+        if (
+            self.start_date is not None
+            and self.end_date is not None
+            and date.fromisoformat(self.end_date) < date.fromisoformat(self.start_date)
+        ):
             raise ValueError("結束日期不可早於開始日期。")
         return self
 

@@ -112,6 +112,8 @@
   "target_scope": "site",
   "target_code": "taipei-1",
   "weekdays": [0, 1, 2, 3, 4],
+  "start_date": null,
+  "end_date": null,
   "start_time": "08:00",
   "end_time": "12:00",
   "play_count": 10,
@@ -119,6 +121,8 @@
   "enabled": true
 }
 ```
+
+`start_date` 與 `end_date` 可為 `null`。兩者都為 `null` 代表沒有日期期限；只設定起日代表起日當天開始生效；只設定迄日代表迄日當天仍生效；兩者都設定代表只在起訖期間生效。起訖日都包含當日。
 
 ### `PUT /api/schedules/{schedule_id}`
 

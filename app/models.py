@@ -73,7 +73,7 @@ class ScheduleRule(Base):
     target_scope: Mapped[str] = mapped_column(String(20), default="global", nullable=False)
     target_code: Mapped[str | None] = mapped_column(String(200))
     weekdays: Mapped[str] = mapped_column(String(50), default="0,1,2,3,4,5,6", nullable=False)
-    start_date: Mapped[str] = mapped_column(String(10), default="1970-01-01", nullable=False)
+    start_date: Mapped[str | None] = mapped_column(String(10))
     end_date: Mapped[str | None] = mapped_column(String(10))
     start_time: Mapped[str] = mapped_column(String(5), nullable=False)
     end_time: Mapped[str] = mapped_column(String(5), nullable=False)

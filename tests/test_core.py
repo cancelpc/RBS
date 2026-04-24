@@ -68,10 +68,10 @@ class CoreBehaviorTests(unittest.TestCase):
 
         schedule = ScheduleCreate(**{**valid_payload, "weekdays": [2, 1, 1, 0]})
         self.assertEqual(schedule.weekdays, [0, 1, 2])
-        self.assertEqual(schedule.start_date, "1970-01-01")
+        self.assertIsNone(schedule.start_date)
         self.assertIsNone(schedule.end_date)
 
-    def test_schedule_window_respects_start_and_optional_end_dates(self):
+    def test_schedule_window_respects_optional_start_and_end_dates(self):
         schedule = ScheduleRule(
             schedule_code="date-window-1",
             name="date-window",
@@ -90,6 +90,15 @@ class CoreBehaviorTests(unittest.TestCase):
 
         schedule.end_date = None
         self.assertTrue(window_matches(datetime(2027, 5, 11, 12, 0), schedule))
+
+        schedule.start_date = None
+        schedule.end_date = None
+        self.assertTrue(window_matches(datetime(2026, 5, 4, 12, 0), schedule))
+
+        schedule.end_date = "2027-05-10"
+        self.assertTrue(window_matches(datetime(2026, 5, 4, 12, 0), schedule))
+        self.assertTrue(window_matches(datetime(2027, 5, 10, 12, 0), schedule))
+        self.assertFalse(window_matches(datetime(2027, 5, 11, 12, 0), schedule))
 
 
 if __name__ == "__main__":
