@@ -14,3 +14,4 @@ wheels/
 /storage/media
 /storage/updates
 *.log
+/storage
