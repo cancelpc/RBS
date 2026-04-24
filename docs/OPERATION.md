@@ -21,7 +21,7 @@ run-admin.bat
 手動啟動時請先指定角色：
 
 ```powershell
-cd E:\MYPRJS\AI_Exam\RotatingBannerSystem
+cd D:\MYPRJS\RBS
 $env:BANNER_APP_ROLE = "client"
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8080
 ```

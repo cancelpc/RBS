@@ -12,7 +12,7 @@
 ## 2. 專案目錄
 
 ```text
-RotatingBannerSystem/
+RBS/
 |- app/                  後端程式
 |- static/               前台與後台頁面
 |- scripts/              啟動與更新腳本

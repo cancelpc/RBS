@@ -1,6 +1,6 @@
 # 佈署手冊
 
-本文件面向系統管理員，說明如何把 RotatingBannerSystem 佈署成中央管理端與本地 client。若只是開發或單機測試，先看 [安裝與佈署手冊](INSTALL.md)。
+本文件面向系統管理員，說明如何把 RBS 佈署成中央管理端與本地 client。若只是開發或單機測試，先看 [安裝與佈署手冊](INSTALL.md)。
 
 ## 1. 佈署模式
 
@@ -29,7 +29,7 @@
 ### 建議啟動
 
 ```powershell
-cd E:\MYPRJS\AI_Exam\RotatingBannerSystem
+cd D:\MYPRJS\RBS
 $env:BANNER_APP_ROLE = "central"
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8080
 ```
@@ -62,7 +62,7 @@ run-admin.bat
 ### 建議啟動
 
 ```powershell
-cd E:\MYPRJS\AI_Exam\RotatingBannerSystem
+cd D:\MYPRJS\RBS
 $env:BANNER_APP_ROLE = "client"
 $env:BANNER_CENTRAL_BASE_URL = "http://central-server:8080"
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8080

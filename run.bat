@@ -16,7 +16,7 @@ if not exist "%PYTHON_EXE%" (
   exit /b 1
 )
 
-echo [INFO] Starting RotatingBannerSystem client on port %PORT%...
+echo [INFO] Starting RBS client on port %PORT%...
 echo [INFO] URL: http://127.0.0.1:%PORT%/
 echo [INFO] Press Ctrl+C to stop.
 echo.

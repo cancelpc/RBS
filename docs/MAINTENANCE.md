@@ -35,7 +35,7 @@ Invoke-RestMethod http://127.0.0.1:8080/api/system/info
 
 ```powershell
 $stamp = Get-Date -Format "yyyyMMdd-HHmmss"
-$backupRoot = "E:\Backup\RotatingBannerSystem\$stamp"
+$backupRoot = "E:\Backup\RBS\$stamp"
 New-Item -ItemType Directory -Force $backupRoot | Out-Null
 Copy-Item storage\banner.db $backupRoot\
 Copy-Item storage\media $backupRoot\media -Recurse
@@ -48,8 +48,8 @@ Copy-Item storage\updates $backupRoot\updates -Recurse -ErrorAction SilentlyCont
 還原前請先停止服務。
 
 ```powershell
-Copy-Item E:\Backup\RotatingBannerSystem\20260424-090000\banner.db storage\banner.db -Force
-Copy-Item E:\Backup\RotatingBannerSystem\20260424-090000\media storage\media -Recurse -Force
+Copy-Item E:\Backup\RBS\20260424-090000\banner.db storage\banner.db -Force
+Copy-Item E:\Backup\RBS\20260424-090000\media storage\media -Recurse -Force
 ```
 
 還原後啟動服務，確認：

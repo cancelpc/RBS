@@ -7,157 +7,205 @@
   <link rel="stylesheet" href="/assets/app.css">
 </head>
 <body>
-  <div class="shell">
-    <header class="admin-header">
+  <div class="admin-app">
+    <aside class="admin-nav">
       <div>
-        <div class="brand">Rotating Banner Admin</div>
-        <div class="hint">把影片、播放清單、排程與同步設定整理成較直覺的維護流程</div>
+        <div class="brand">RBS Admin</div>
+        <div class="hint" id="mode-status">載入中</div>
       </div>
-      <div class="button-row">
+      <nav class="nav-list" aria-label="後台導覽">
+        <button class="nav-item active" data-section="overview" onclick="showSection('overview')">總覽</button>
+        <button class="nav-item" data-section="media" onclick="showSection('media')">影片</button>
+        <button class="nav-item" data-section="playlists" onclick="showSection('playlists')">清單</button>
+        <button class="nav-item" data-section="schedules" onclick="showSection('schedules')">排程</button>
+        <button class="nav-item" data-section="clients" onclick="showSection('clients')">Client</button>
+        <button class="nav-item" data-section="settings" onclick="showSection('settings')">設定</button>
+      </nav>
+      <div class="nav-actions">
         <a href="/" class="top-link">前台播放器</a>
         <button class="secondary" onclick="logoutAdmin()">登出</button>
       </div>
-    </header>
+    </aside>
 
-    <main class="admin-layout">
-      <section class="stack">
-        <div class="panel hero-panel">
-          <div class="hero-head">
-            <div>
-              <div class="eyebrow">維護首頁</div>
-              <h1>先上傳影片，再建立清單與排程</h1>
-              <p class="small">常用操作集中在同一區塊，畫面下方再處理細部設定，減少來回捲動與手動輸入 ID。</p>
+    <main class="admin-workspace">
+      <header class="workspace-header">
+        <div>
+          <div class="eyebrow" id="section-eyebrow">總覽</div>
+          <h1 id="section-title">營運概況</h1>
+        </div>
+        <div class="status-block compact-status">
+          <div class="status-label">同步狀態</div>
+          <div class="status-value" id="sync-status">尚未執行同步。</div>
+          <div class="small" id="version-status"></div>
+        </div>
+      </header>
+
+      <section class="admin-section active" id="section-overview">
+        <div class="stats-grid" id="summary-cards"></div>
+        <div class="overview-grid">
+          <div class="panel">
+            <div class="section-heading">
+              <div>
+                <div class="eyebrow">快速動作</div>
+                <h2>常用操作</h2>
+              </div>
             </div>
-            <div class="status-block">
-              <div class="status-label">同步狀態</div>
-              <div class="status-value" id="sync-status">尚未執行同步。</div>
-              <div class="small" id="version-status"></div>
+            <div class="action-grid">
+              <button onclick="showSection('media')">管理影片</button>
+              <button onclick="showSection('playlists')">管理清單</button>
+              <button onclick="showSection('schedules')">管理排程</button>
+              <button class="secondary" onclick="runUpstreamSync()">同步中央</button>
+              <button class="secondary" onclick="runLocalSync()">同步本機媒體</button>
+              <button class="secondary central-only" onclick="buildPlaylistFromUploaded()">建立全天循環</button>
             </div>
           </div>
-          <div class="stats-grid" id="summary-cards"></div>
-          <div class="quick-grid">
-            <div class="quick-card">
-              <div class="quick-title">1. 匯入影片</div>
-              <div class="small">支援多選上傳，檔案會直接存到本機 `storage/media/`。</div>
-              <label>直接上傳影片（可多選）<input id="media-files" type="file" accept="video/*" multiple></label>
-              <div class="button-row">
-                <button onclick="uploadMediaFiles()">上傳影片</button>
-                <button class="secondary" onclick="runLocalSync()">下載目前影片</button>
-              </div>
-              <div class="small" id="upload-status">可直接上傳多支影片到本機 storage/media/。</div>
-            </div>
-            <div class="quick-card">
-              <div class="quick-title">2. 一鍵建立輪播</div>
-              <div class="small">中央端可把目前所有影片做成全天循環；client 模式只提供檢視與同步。</div>
-              <div class="button-row">
-                <button onclick="buildPlaylistFromUploaded()">用全部影片建立循環清單與排程</button>
-              </div>
-              <div class="small">系統會建立全天候、無播放次數上限的排程。</div>
-            </div>
-            <div class="quick-card">
-              <div class="quick-title">3. 中央同步</div>
-              <div class="small" id="mode-status">client 模式：目前未設定中央管理端 URL。</div>
-              <div class="button-row">
-                <button class="secondary" onclick="runUpstreamSync()">同步後台並下載</button>
+          <div class="panel">
+            <div class="section-heading">
+              <div>
+                <div class="eyebrow">近期 Client</div>
+                <h2>連線狀態</h2>
               </div>
             </div>
+            <div id="overview-clients" class="data-stack"></div>
           </div>
         </div>
+      </section>
 
-        <div class="panel">
-          <div class="section-heading">
-            <div>
-              <div class="eyebrow">影片管理</div>
-              <h2>維護影片資料</h2>
+      <section class="admin-section" id="section-media">
+        <div class="workspace-grid">
+          <div class="panel">
+            <div class="section-heading">
+              <div>
+                <div class="eyebrow">影片</div>
+                <h2 id="media-form-title">新增影片</h2>
+              </div>
+              <button class="secondary" onclick="resetMediaForm()">清空</button>
             </div>
-          </div>
-          <div class="form-grid">
-            <div class="stack">
+            <div class="stack form-stack">
               <input id="media-edit-id" type="hidden">
               <label>標題<input id="media-title" placeholder="例如：四月宣導短片"></label>
               <label>來源 URL<input id="media-url" placeholder="https://example.com/video.mp4 或 local-upload://檔名"></label>
-              <label class="checkbox-label"><input type="checkbox" id="media-enabled" checked> 啟用這支影片</label>
+              <label class="checkbox-label"><input type="checkbox" id="media-enabled" checked> 啟用</label>
               <div class="button-row">
-                <button id="media-save-button" onclick="saveMedia()">新增影片</button>
-                <button class="secondary" onclick="resetMediaForm()">取消編輯</button>
+                <button id="media-save-button" class="central-only" onclick="saveMedia()">新增影片</button>
+              </div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="section-heading">
+              <div>
+                <div class="eyebrow">上傳</div>
+                <h2>匯入影片檔</h2>
               </div>
             </div>
             <div class="stack">
-              <div class="small">已上傳或已建立的影片會顯示在右側資料區，可直接點「編輯」。如果影片來自上傳檔案，系統會自動帶入 `local-upload://` 來源。</div>
-              <div class="callout">
-                <div class="callout-title">建議流程</div>
-                <div class="small">先上傳影片，再視需要補上外部來源 URL；不需要兩種方式都做。</div>
+              <label>影片檔<input id="media-files" type="file" accept="video/*" multiple></label>
+              <div class="button-row">
+                <button class="central-only" onclick="uploadMediaFiles()">上傳影片</button>
+                <button class="secondary" onclick="runLocalSync()">下載目前影片</button>
               </div>
+              <div class="small" id="upload-status">尚未選擇檔案。</div>
             </div>
           </div>
         </div>
-
         <div class="panel">
           <div class="section-heading">
             <div>
-              <div class="eyebrow">播放清單</div>
-              <h2>用勾選方式組清單</h2>
+              <div class="eyebrow">資料</div>
+              <h2>影片清單</h2>
             </div>
           </div>
-          <div class="form-grid">
-            <div class="stack">
+          <div id="media-list" class="data-stack"></div>
+        </div>
+      </section>
+
+      <section class="admin-section" id="section-playlists">
+        <div class="workspace-grid">
+          <div class="panel">
+            <div class="section-heading">
+              <div>
+                <div class="eyebrow">清單</div>
+                <h2 id="playlist-form-title">新增播放清單</h2>
+              </div>
+              <button class="secondary" onclick="resetPlaylistForm()">清空</button>
+            </div>
+            <div class="stack form-stack">
               <input id="playlist-edit-id" type="hidden">
               <label>名稱<input id="playlist-name" placeholder="例如：上午輪播"></label>
-              <label>說明<textarea id="playlist-description" rows="2" placeholder="例如：櫃台營業時間播放內容"></textarea></label>
-              <label>前台抬頭文字<input id="playlist-display-title" placeholder="例如：防詐宣導專區"></label>
-              <label>派送範圍
-                <select id="playlist-target-scope">
-                  <option value="global">全部 client</option>
-                  <option value="group">指定群組</option>
-                  <option value="site">指定站點</option>
-                </select>
-              </label>
-              <label>派送代碼<input id="playlist-target-code" placeholder="群組代碼或站點名稱；全部 client 可留空"></label>
-              <label class="checkbox-label"><input type="checkbox" id="playlist-enabled" checked> 啟用這份清單</label>
-              <div class="button-row">
-                <button id="playlist-save-button" onclick="savePlaylist()">新增清單</button>
-                <button class="secondary" onclick="resetPlaylistForm()">取消編輯</button>
+              <label>說明<textarea id="playlist-description" rows="2"></textarea></label>
+              <label>前台抬頭文字<input id="playlist-display-title"></label>
+              <div class="dual-grid">
+                <label>派送範圍
+                  <select id="playlist-target-scope">
+                    <option value="global">全部 client</option>
+                    <option value="group">指定群組</option>
+                    <option value="site">指定站點</option>
+                  </select>
+                </label>
+                <label>派送代碼<input id="playlist-target-code" placeholder="branch-a 或 taipei-1"></label>
+              </div>
+              <label class="checkbox-label"><input type="checkbox" id="playlist-enabled" checked> 啟用</label>
+              <button id="playlist-save-button" class="central-only" onclick="savePlaylist()">新增清單</button>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="section-heading">
+              <div>
+                <div class="eyebrow">內容</div>
+                <h2>影片順序</h2>
               </div>
             </div>
-            <div class="stack">
+            <div class="split-stack">
               <div>
-                <div class="subheading">已選影片順序</div>
+                <div class="subheading">已選影片</div>
                 <div id="playlist-selected-list" class="selector-list empty-selector">尚未選擇影片</div>
               </div>
               <div>
-                <div class="subheading">可加入清單的影片</div>
+                <div class="subheading">可加入影片</div>
                 <div id="playlist-media-selector" class="selector-list"></div>
               </div>
             </div>
           </div>
         </div>
-
         <div class="panel">
           <div class="section-heading">
             <div>
-              <div class="eyebrow">排程管理</div>
-              <h2>選清單、點星期、設定時段</h2>
+              <div class="eyebrow">資料</div>
+              <h2>播放清單</h2>
             </div>
           </div>
-          <div class="form-grid">
-            <div class="stack">
+          <div id="playlist-list" class="data-stack"></div>
+        </div>
+      </section>
+
+      <section class="admin-section" id="section-schedules">
+        <div class="workspace-grid">
+          <div class="panel">
+            <div class="section-heading">
+              <div>
+                <div class="eyebrow">排程</div>
+                <h2 id="schedule-form-title">新增排程</h2>
+              </div>
+              <button class="secondary" onclick="resetScheduleForm()">清空</button>
+            </div>
+            <div class="stack form-stack">
               <input id="schedule-edit-id" type="hidden">
               <label>名稱<input id="schedule-name" placeholder="例如：平日白天"></label>
-              <label>播放清單
-                <select id="schedule-playlist-id"></select>
-              </label>
-              <label>派送範圍
-                <select id="schedule-target-scope">
-                  <option value="global">全部 client</option>
-                  <option value="group">指定群組</option>
-                  <option value="site">指定站點</option>
-                </select>
-              </label>
-              <label>派送代碼<input id="schedule-target-code" placeholder="群組代碼或站點名稱；全部 client 可留空"></label>
-              <div class="stack compact">
+              <label>播放清單<select id="schedule-playlist-id"></select></label>
+              <div class="dual-grid">
+                <label>派送範圍
+                  <select id="schedule-target-scope">
+                    <option value="global">全部 client</option>
+                    <option value="group">指定群組</option>
+                    <option value="site">指定站點</option>
+                  </select>
+                </label>
+                <label>派送代碼<input id="schedule-target-code" placeholder="branch-a 或 taipei-1"></label>
+              </div>
+              <div>
                 <div class="subheading">播放星期</div>
                 <div class="weekday-row" id="weekday-selector"></div>
-                <div class="button-row">
+                <div class="button-row compact-actions">
                   <button class="secondary" type="button" onclick="setWeekdays([0,1,2,3,4])">平日</button>
                   <button class="secondary" type="button" onclick="setWeekdays([5,6])">週末</button>
                   <button class="secondary" type="button" onclick="setWeekdays([0,1,2,3,4,5,6])">每天</button>
@@ -168,82 +216,86 @@
                 <label>結束時間<input id="schedule-end" value="18:00"></label>
               </div>
               <div class="dual-grid">
-                <label>每日完整播放次數上限<input id="schedule-play-count" value="0" type="number" min="0"></label>
+                <label>每日播放次數上限<input id="schedule-play-count" value="0" type="number" min="0"></label>
                 <label>優先序<input id="schedule-priority" value="100" type="number" min="0"></label>
               </div>
-              <label class="checkbox-label"><input type="checkbox" id="schedule-enabled" checked> 啟用這筆排程</label>
-              <div class="button-row">
-                <button id="schedule-save-button" onclick="saveSchedule()">新增排程</button>
-                <button class="secondary" onclick="resetScheduleForm()">取消編輯</button>
-              </div>
-            </div>
-            <div class="stack">
-              <div class="callout">
-                <div class="callout-title">規則提示</div>
-                <div class="small">`0` 代表無播放次數上限；`priority` 數字越小越優先。</div>
-              </div>
-              <div class="small">若同時有多個排程符合條件，系統會先選擇優先序較小的那筆。請盡量讓時段與清單名稱清楚，方便後續維護。</div>
+              <label class="checkbox-label"><input type="checkbox" id="schedule-enabled" checked> 啟用</label>
+              <button id="schedule-save-button" class="central-only" onclick="saveSchedule()">新增排程</button>
             </div>
           </div>
-        </div>
-
-        <div class="panel">
-          <div class="section-heading">
-            <div>
-              <div class="eyebrow">同步與版本</div>
-              <h2>集中管理系統設定</h2>
-            </div>
-          </div>
-          <div class="form-grid">
-            <div class="stack">
-              <label>時區<input id="settings-timezone" value="Asia/Taipei"></label>
-              <label>同步秒數<input id="settings-sync-interval" value="300" type="number" min="30"></label>
-              <label>中央管理端 URL<input id="settings-central-base-url" placeholder="https://central.example.com"></label>
-              <label>Client 代碼<input id="settings-client-code" placeholder="例如：client-a"></label>
-              <label>Client 名稱<input id="settings-client-name" placeholder="例如：台北一店播放器"></label>
-              <label>站點名稱<input id="settings-client-site-name" placeholder="例如：taipei-1"></label>
-              <label>群組代碼<input id="settings-client-group-name" placeholder="例如：branch-a"></label>
-              <label>最新版本<input id="settings-latest-version" value="0.1.0"></label>
-              <label>更新封包 URL<input id="settings-package-url" placeholder="https://server/banner-system.zip"></label>
-              <label>管理密碼<input id="settings-admin-password" type="password" value="admin"></label>
-              <label class="checkbox-label"><input type="checkbox" id="settings-show-player-brand"> 前台顯示程式名稱</label>
-              <label class="checkbox-label"><input type="checkbox" id="settings-default-fullscreen"> 前台預設嘗試全螢幕</label>
-              <div class="button-row">
-                <button onclick="saveSettings()">儲存設定</button>
+          <div class="panel">
+            <div class="section-heading">
+              <div>
+                <div class="eyebrow">資料</div>
+                <h2>排程列表</h2>
               </div>
             </div>
-            <div class="stack">
-              <div class="callout">
-                <div class="callout-title">使用提醒</div>
-                <div class="small">client 模式請填中央管理端 URL 與 client 身分；central 模式則維護內容並發布 manifest。</div>
-              </div>
-              <div class="small">同步按鈕已移到頁面最上方的快速動作區，日常維護時不用捲到最下方找按鈕。</div>
-            </div>
+            <div id="schedule-list" class="data-stack"></div>
           </div>
         </div>
       </section>
 
-      <aside class="stack">
-        <div class="panel sticky-panel">
+      <section class="admin-section" id="section-clients">
+        <div class="panel">
           <div class="section-heading">
             <div>
-              <div class="eyebrow">目前資料</div>
-              <h2>現況一覽</h2>
+              <div class="eyebrow">Client</div>
+              <h2>裝置狀態</h2>
             </div>
           </div>
-          <div id="data-view"></div>
+          <div id="client-list" class="data-stack"></div>
         </div>
-      </aside>
+      </section>
+
+      <section class="admin-section" id="section-settings">
+        <div class="panel">
+          <div class="section-heading">
+            <div>
+              <div class="eyebrow">設定</div>
+              <h2>系統設定</h2>
+            </div>
+          </div>
+          <div class="settings-grid">
+            <label>時區<input id="settings-timezone" value="Asia/Taipei"></label>
+            <label>同步秒數<input id="settings-sync-interval" value="300" type="number" min="30"></label>
+            <label>中央管理端 URL<input id="settings-central-base-url" placeholder="https://central.example.com"></label>
+            <label>Client 代碼<input id="settings-client-code" placeholder="例如：client-a"></label>
+            <label>Client 名稱<input id="settings-client-name" placeholder="例如：台北一店播放器"></label>
+            <label>站點名稱<input id="settings-client-site-name" placeholder="例如：taipei-1"></label>
+            <label>群組代碼<input id="settings-client-group-name" placeholder="例如：branch-a"></label>
+            <label>最新版本<input id="settings-latest-version" value="0.1.0"></label>
+            <label>更新封包 URL<input id="settings-package-url" placeholder="https://server/banner-system.zip"></label>
+            <label>管理密碼<input id="settings-admin-password" type="password" value="admin"></label>
+            <label class="checkbox-label"><input type="checkbox" id="settings-show-player-brand"> 前台顯示程式名稱</label>
+            <label class="checkbox-label"><input type="checkbox" id="settings-default-fullscreen"> 前台預設嘗試全螢幕</label>
+          </div>
+          <div class="button-row settings-actions">
+            <button onclick="saveSettings()">儲存設定</button>
+            <button class="secondary" onclick="runUpstreamSync()">立即同步</button>
+          </div>
+        </div>
+      </section>
     </main>
   </div>
+
   <script>
     let appRole = "client";
+    let activeSection = "overview";
     let cachedMedia = [];
     let cachedPlaylists = [];
     let cachedSchedules = [];
     let cachedClients = [];
     let selectedPlaylistMediaIds = [];
     let selectedWeekdays = [0, 1, 2, 3, 4, 5, 6];
+
+    const sectionTitles = {
+      overview: ["總覽", "營運概況"],
+      media: ["影片", "媒體內容"],
+      playlists: ["清單", "播放清單"],
+      schedules: ["排程", "播放排程"],
+      clients: ["Client", "裝置狀態"],
+      settings: ["設定", "系統設定"]
+    };
 
     const weekdayOptions = [
       { value: 0, label: "一" },
@@ -257,11 +309,7 @@
 
     async function jsonFetch(url, options = {}) {
       const headers = options.body instanceof FormData ? {} : { "Content-Type": "application/json" };
-      const response = await fetch(url, {
-        headers,
-        credentials: "same-origin",
-        ...options
-      });
+      const response = await fetch(url, { headers, credentials: "same-origin", ...options });
       if (response.status === 401) {
         window.location.href = "/admin-login";
         throw new Error("請先登入管理後台。");
@@ -288,46 +336,102 @@
       return "全部 client";
     }
 
+    function showSection(name) {
+      activeSection = name;
+      document.querySelectorAll(".admin-section").forEach(section => {
+        section.classList.toggle("active", section.id === `section-${name}`);
+      });
+      document.querySelectorAll(".nav-item").forEach(button => {
+        button.classList.toggle("active", button.dataset.section === name);
+      });
+      const [eyebrow, title] = sectionTitles[name] || sectionTitles.overview;
+      document.getElementById("section-eyebrow").textContent = eyebrow;
+      document.getElementById("section-title").textContent = title;
+    }
+
     function renderSummaryCards(media, playlists, schedules) {
-      const enabledMedia = media.filter(item => item.enabled).length;
-      const enabledPlaylists = playlists.filter(item => item.enabled).length;
-      const enabledSchedules = schedules.filter(item => item.enabled).length;
       document.getElementById("summary-cards").innerHTML = `
-        <div class="stat-card">
-          <div class="stat-label">影片</div>
-          <div class="stat-value">${media.length}</div>
-          <div class="small">啟用中 ${enabledMedia} 支</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">播放清單</div>
-          <div class="stat-value">${playlists.length}</div>
-          <div class="small">啟用中 ${enabledPlaylists} 份</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">排程</div>
-          <div class="stat-value">${schedules.length}</div>
-          <div class="small">啟用中 ${enabledSchedules} 筆</div>
-        </div>
+        <div class="stat-card"><div class="stat-label">影片</div><div class="stat-value">${media.length}</div><div class="small">啟用 ${media.filter(item => item.enabled).length}</div></div>
+        <div class="stat-card"><div class="stat-label">清單</div><div class="stat-value">${playlists.length}</div><div class="small">啟用 ${playlists.filter(item => item.enabled).length}</div></div>
+        <div class="stat-card"><div class="stat-label">排程</div><div class="stat-value">${schedules.length}</div><div class="small">啟用 ${schedules.filter(item => item.enabled).length}</div></div>
       `;
+    }
+
+    function rowActions(kind, id) {
+      return appRole === "central"
+        ? `<div class="row-actions"><button class="secondary small-button" onclick="edit${kind}(${id})">編輯</button><button class="danger small-button" onclick="delete${kind}(${id})">刪除</button></div>`
+        : "";
+    }
+
+    function emptyState(text) {
+      return `<div class="empty-selector">${escapeHtml(text)}</div>`;
+    }
+
+    function renderMediaList() {
+      document.getElementById("media-list").innerHTML = cachedMedia.map(item => `
+        <article class="data-row">
+          <div><strong>${escapeHtml(item.title)}</strong><div class="small">${escapeHtml(item.local_file_name || item.source_url || "尚未下載")}</div></div>
+          <div class="status-pill ${item.enabled ? "ok" : "muted"}">${item.enabled ? "啟用" : "停用"}</div>
+          ${rowActions("Media", item.id)}
+        </article>
+      `).join("") || emptyState("尚無影片");
+    }
+
+    function renderPlaylistList() {
+      document.getElementById("playlist-list").innerHTML = cachedPlaylists.map(item => `
+        <article class="data-row">
+          <div>
+            <strong>${escapeHtml(item.name)}</strong>
+            <div class="small">${escapeHtml(targetLabel(item.target_scope, item.target_code))} / ${(item.items || []).length} 支影片</div>
+            <div class="small">${(item.items || []).map(x => `${x.position}. ${escapeHtml(x.media_title)}`).join(" / ") || "無項目"}</div>
+          </div>
+          <div class="status-pill ${item.enabled ? "ok" : "muted"}">${item.enabled ? "啟用" : "停用"}</div>
+          ${rowActions("Playlist", item.id)}
+        </article>
+      `).join("") || emptyState("尚無播放清單");
+    }
+
+    function renderScheduleList() {
+      document.getElementById("schedule-list").innerHTML = cachedSchedules.map(item => `
+        <article class="data-row">
+          <div>
+            <strong>${escapeHtml(item.name)}</strong>
+            <div class="small">${escapeHtml(targetLabel(item.target_scope, item.target_code))} / ${escapeHtml(item.start_time)}-${escapeHtml(item.end_time)} / 優先序 ${item.priority}</div>
+            <div class="small">星期 ${item.weekdays.join(",")} / 次數 ${item.play_count} / 已播 ${item.current_play_count}</div>
+          </div>
+          <div class="status-pill ${item.enabled ? "ok" : "muted"}">${item.enabled ? "啟用" : "停用"}</div>
+          ${rowActions("Schedule", item.id)}
+        </article>
+      `).join("") || emptyState("尚無排程");
+    }
+
+    function renderClientList() {
+      const html = cachedClients.map(item => `
+        <article class="data-row">
+          <div>
+            <strong>${escapeHtml(item.client_code)}</strong>
+            <div class="small">${escapeHtml(item.name)} / 站點 ${escapeHtml(item.site_name || "未設定")} / 群組 ${escapeHtml(item.group_name || "未設定")}</div>
+            <div class="small">Manifest ${escapeHtml(item.last_manifest_version || "尚無")} / 同步 ${escapeHtml(item.last_sync_status || "尚無")}</div>
+          </div>
+          <div class="small">${escapeHtml(item.last_seen_at || "尚無回報")}</div>
+        </article>
+      `).join("") || emptyState(appRole === "central" ? "尚無 client 註冊資料" : "client 模式不顯示中央裝置清單");
+      document.getElementById("client-list").innerHTML = html;
+      document.getElementById("overview-clients").innerHTML = html;
     }
 
     function renderPlaylistSelector() {
       const container = document.getElementById("playlist-media-selector");
       if (!cachedMedia.length) {
-        container.innerHTML = "<div class='small'>目前沒有影片，請先上傳或新增影片。</div>";
+        container.innerHTML = emptyState("目前沒有影片");
         return;
       }
-
       container.innerHTML = cachedMedia.map(item => {
         const selectedIndex = selectedPlaylistMediaIds.indexOf(item.id);
-        const selectedBadge = selectedIndex >= 0 ? `<span class="pill">順序 ${selectedIndex + 1}</span>` : "";
         return `
           <button type="button" class="selector-item ${selectedIndex >= 0 ? "active" : ""}" onclick="togglePlaylistMedia(${item.id})">
-            <div>
-              <strong>${escapeHtml(item.title)}</strong>
-              <div class="small">${escapeHtml(item.local_file_name || item.source_url || "尚未設定來源")}</div>
-            </div>
-            <div>${selectedBadge}</div>
+            <span>${escapeHtml(item.title)}</span>
+            ${selectedIndex >= 0 ? `<span class="pill">#${selectedIndex + 1}</span>` : ""}
           </button>
         `;
       }).join("");
@@ -340,18 +444,14 @@
         container.innerHTML = "尚未選擇影片";
         return;
       }
-
       container.className = "selector-list";
       container.innerHTML = selectedPlaylistMediaIds.map((mediaId, index) => {
         const item = cachedMedia.find(row => row.id === mediaId);
         if (!item) return "";
         return `
           <div class="selected-item">
-            <div>
-              <span class="pill">#${index + 1}</span>
-              ${escapeHtml(item.title)}
-            </div>
-            <div class="button-row">
+            <div><span class="pill">#${index + 1}</span>${escapeHtml(item.title)}</div>
+            <div class="button-row compact-actions">
               <button class="secondary small-button" type="button" onclick="movePlaylistMedia(${index}, -1)">上移</button>
               <button class="secondary small-button" type="button" onclick="movePlaylistMedia(${index}, 1)">下移</button>
               <button class="danger small-button" type="button" onclick="removePlaylistMedia(${mediaId})">移除</button>
@@ -363,11 +463,8 @@
 
     function togglePlaylistMedia(mediaId) {
       const index = selectedPlaylistMediaIds.indexOf(mediaId);
-      if (index >= 0) {
-        selectedPlaylistMediaIds.splice(index, 1);
-      } else {
-        selectedPlaylistMediaIds.push(mediaId);
-      }
+      if (index >= 0) selectedPlaylistMediaIds.splice(index, 1);
+      else selectedPlaylistMediaIds.push(mediaId);
       renderPlaylistSelector();
       renderSelectedPlaylist();
     }
@@ -390,21 +487,13 @@
     function renderPlaylistOptions() {
       const select = document.getElementById("schedule-playlist-id");
       const currentValue = select.value;
-      const options = cachedPlaylists.map(item => `<option value="${item.id}">${escapeHtml(item.name)} (#${item.id})</option>`).join("");
-      select.innerHTML = options || "<option value=''>目前沒有播放清單</option>";
-      if (currentValue && cachedPlaylists.some(item => String(item.id) === currentValue)) {
-        select.value = currentValue;
-      }
+      select.innerHTML = cachedPlaylists.map(item => `<option value="${item.id}">${escapeHtml(item.name)}</option>`).join("") || "<option value=''>目前沒有播放清單</option>";
+      if (currentValue && cachedPlaylists.some(item => String(item.id) === currentValue)) select.value = currentValue;
     }
 
     function renderWeekdaySelector() {
-      const container = document.getElementById("weekday-selector");
-      container.innerHTML = weekdayOptions.map(item => `
-        <button
-          type="button"
-          class="weekday-chip ${selectedWeekdays.includes(item.value) ? "active" : ""}"
-          onclick="toggleWeekday(${item.value})"
-        >週${item.label}</button>
+      document.getElementById("weekday-selector").innerHTML = weekdayOptions.map(item => `
+        <button type="button" class="weekday-chip ${selectedWeekdays.includes(item.value) ? "active" : ""}" onclick="toggleWeekday(${item.value})">週${item.label}</button>
       `).join("");
     }
 
@@ -423,81 +512,6 @@
       renderWeekdaySelector();
     }
 
-    function renderDataView(media, playlists, schedules, clients) {
-      const html = `
-        <div class="list-card">
-          <h3>影片</h3>
-          ${media.map(item => `
-            <div class="record-card">
-              <div>
-                <span class="pill">#${item.id}</span>
-                ${escapeHtml(item.title)}
-              </div>
-              <div class="small">${escapeHtml(item.source_url)}</div>
-              <div class="small">本地檔案：${escapeHtml(item.local_file_name || "尚未下載")}</div>
-              <div class="button-row">
-                <button class="secondary" onclick="editMedia(${item.id})">編輯</button>
-                <button class="danger" onclick="deleteMedia(${item.id})">刪除</button>
-              </div>
-            </div>
-          `).join("") || "<div class='small'>尚無資料</div>"}
-        </div>
-        <div class="list-card">
-          <h3>清單</h3>
-          ${playlists.map(item => `
-            <div class="record-card">
-              <div>
-                <span class="pill">#${item.id}</span>
-                ${escapeHtml(item.name)}
-              </div>
-              <div class="small">派送：${escapeHtml(targetLabel(item.target_scope, item.target_code))}</div>
-              <div class="small">抬頭：${escapeHtml(item.display_title || "未設定")}</div>
-              <div class="small">${(item.items || []).map(x => `${x.position}:${escapeHtml(x.media_title)}(#${x.media_id})`).join(" / ") || "無項目"}</div>
-              <div class="button-row">
-                <button class="secondary" onclick="editPlaylist(${item.id})">編輯</button>
-                <button class="danger" onclick="deletePlaylist(${item.id})">刪除</button>
-              </div>
-            </div>
-          `).join("") || "<div class='small'>尚無資料</div>"}
-        </div>
-        <div class="list-card">
-          <h3>排程</h3>
-          ${schedules.map(item => `
-            <div class="record-card">
-              <div>
-                <span class="pill">#${item.id}</span>
-                ${escapeHtml(item.name)}
-              </div>
-              <div class="small">派送：${escapeHtml(targetLabel(item.target_scope, item.target_code))}</div>
-              <div class="small">清單 #${item.playlist_id} / ${escapeHtml(item.start_time)}-${escapeHtml(item.end_time)}</div>
-              <div class="small">星期 ${item.weekdays.join(",")} / 次數 ${item.play_count} / 已播 ${item.current_play_count}</div>
-              <div class="button-row">
-                <button class="secondary" onclick="editSchedule(${item.id})">編輯</button>
-                <button class="danger" onclick="deleteSchedule(${item.id})">刪除</button>
-              </div>
-            </div>
-          `).join("") || "<div class='small'>尚無資料</div>"}
-        </div>
-        ${appRole === "central" ? `
-          <div class="list-card">
-            <h3>Client</h3>
-            ${(clients || []).map(item => `
-              <div class="record-card">
-                <div>
-                  <span class="pill">${escapeHtml(item.client_code)}</span>
-                  ${escapeHtml(item.name)}
-                </div>
-                <div class="small">站點 ${escapeHtml(item.site_name || "未設定")} / 群組 ${escapeHtml(item.group_name || "未設定")}</div>
-                <div class="small">Manifest ${escapeHtml(item.last_manifest_version || "尚無")} / 同步 ${escapeHtml(item.last_sync_status || "尚無")}</div>
-                <div class="small">最後回報：${escapeHtml(item.last_seen_at || "尚無")}</div>
-              </div>
-            `).join("") || "<div class='small'>尚無 client 註冊資料</div>"}
-          </div>
-        ` : ""}
-      `;
-      document.getElementById("data-view").innerHTML = html;
-    }
-
     async function loadAll() {
       const systemInfo = await jsonFetch("/api/system/info");
       appRole = systemInfo.app_role || "client";
@@ -509,10 +523,9 @@
         jsonFetch("/api/sync/status"),
         jsonFetch("/api/version")
       ];
-      if (appRole === "central") {
-        requests.push(jsonFetch("/api/clients"));
-      }
+      if (appRole === "central") requests.push(jsonFetch("/api/clients"));
       const [media, playlists, schedules, settings, syncStatus, version, clients = []] = await Promise.all(requests);
+
       cachedMedia = media;
       cachedPlaylists = playlists;
       cachedSchedules = schedules;
@@ -532,40 +545,33 @@
       document.getElementById("settings-default-fullscreen").checked = (settings.default_fullscreen || "").toLowerCase() === "true";
 
       document.getElementById("mode-status").textContent = appRole === "central"
-        ? "中央管理端模式：負責內容維護、manifest 發布與 client 管理。"
-        : (settings.central_base_url
-          ? `client 模式，中央管理端：${settings.central_base_url}`
-          : "client 模式：目前未設定中央管理端 URL，系統只播放本機既有內容。");
-
+        ? "中央管理端"
+        : (settings.central_base_url ? `Client / ${settings.central_base_url}` : "Client / 未設定中央");
       document.getElementById("sync-status").textContent = syncStatus.running
         ? "同步執行中"
-        : `最近同步：${syncStatus.last_finished_at || "尚無"}${syncStatus.last_error ? " / 錯誤：" + syncStatus.last_error : ""}`;
-
+        : `最近：${syncStatus.last_finished_at || "尚無"}${syncStatus.last_error ? " / " + syncStatus.last_error : ""}`;
       document.getElementById("version-status").textContent = version.update_available
-        ? `目前版本 ${version.current_version}，有新版本 ${version.latest_version}`
-        : `目前版本 ${version.current_version}，已是最新`;
+        ? `目前 ${version.current_version} / 最新 ${version.latest_version}`
+        : `目前 ${version.current_version}`;
 
       renderSummaryCards(media, playlists, schedules);
+      renderMediaList();
+      renderPlaylistList();
+      renderScheduleList();
+      renderClientList();
       renderPlaylistSelector();
       renderSelectedPlaylist();
       renderPlaylistOptions();
       renderWeekdaySelector();
-      renderDataView(media, playlists, schedules, clients);
       applyRoleVisibility();
     }
 
     function applyRoleVisibility() {
-      const centralOnlyButtons = [
-        "media-save-button",
-        "playlist-save-button",
-        "schedule-save-button"
-      ];
-      for (const id of centralOnlyButtons) {
-        const button = document.getElementById(id);
-        if (button) {
-          button.disabled = appRole !== "central";
-        }
-      }
+      document.querySelectorAll(".central-only").forEach(element => {
+        element.disabled = appRole !== "central";
+        element.classList.toggle("is-disabled", appRole !== "central");
+      });
+      document.querySelector('[data-section="clients"]').style.display = appRole === "central" ? "block" : "none";
     }
 
     function resetMediaForm() {
@@ -574,13 +580,11 @@
       document.getElementById("media-url").value = "";
       document.getElementById("media-enabled").checked = true;
       document.getElementById("media-save-button").textContent = "新增影片";
+      document.getElementById("media-form-title").textContent = "新增影片";
     }
 
     async function saveMedia() {
-      if (appRole !== "central") {
-        alert("client 模式不可直接維護中央內容。");
-        return;
-      }
+      if (appRole !== "central") return;
       const editId = document.getElementById("media-edit-id").value;
       await jsonFetch(editId ? `/api/media/${editId}` : "/api/media", {
         method: editId ? "PUT" : "POST",
@@ -597,42 +601,33 @@
     function editMedia(id) {
       const item = cachedMedia.find(row => row.id === id);
       if (!item) return;
+      showSection("media");
       document.getElementById("media-edit-id").value = item.id;
       document.getElementById("media-title").value = item.title;
       document.getElementById("media-url").value = item.source_url;
       document.getElementById("media-enabled").checked = !!item.enabled;
       document.getElementById("media-save-button").textContent = "更新影片";
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      document.getElementById("media-form-title").textContent = "編輯影片";
     }
 
     async function deleteMedia(id) {
-      if (!confirm(`確定要刪除影片 #${id} 嗎？`)) return;
+      if (appRole !== "central" || !confirm(`確定要刪除影片 #${id} 嗎？`)) return;
       await jsonFetch(`/api/media/${id}`, { method: "DELETE" });
-      if (document.getElementById("media-edit-id").value === String(id)) {
-        resetMediaForm();
-      }
+      if (document.getElementById("media-edit-id").value === String(id)) resetMediaForm();
       selectedPlaylistMediaIds = selectedPlaylistMediaIds.filter(mediaId => mediaId !== id);
       await loadAll();
     }
 
     async function uploadMediaFiles() {
-      if (appRole !== "central") {
-        alert("client 模式不可直接上傳中央內容。");
-        return;
-      }
+      if (appRole !== "central") return;
       const input = document.getElementById("media-files");
       if (!input.files.length) {
         document.getElementById("upload-status").textContent = "請先選擇至少一支影片。";
         return;
       }
       const formData = new FormData();
-      for (const file of input.files) {
-        formData.append("files", file);
-      }
-      const result = await jsonFetch("/api/media/upload", {
-        method: "POST",
-        body: formData
-      });
+      for (const file of input.files) formData.append("files", file);
+      const result = await jsonFetch("/api/media/upload", { method: "POST", body: formData });
       document.getElementById("upload-status").textContent = `已上傳 ${result.count} 支影片。`;
       input.value = "";
       await loadAll();
@@ -647,16 +642,14 @@
       document.getElementById("playlist-target-code").value = "";
       document.getElementById("playlist-enabled").checked = true;
       document.getElementById("playlist-save-button").textContent = "新增清單";
+      document.getElementById("playlist-form-title").textContent = "新增播放清單";
       selectedPlaylistMediaIds = [];
       renderPlaylistSelector();
       renderSelectedPlaylist();
     }
 
     async function savePlaylist() {
-      if (appRole !== "central") {
-        alert("client 模式不可直接維護播放清單。");
-        return;
-      }
+      if (appRole !== "central") return;
       const items = selectedPlaylistMediaIds.map((value, index) => ({ media_id: Number(value), position: index + 1 }));
       const editId = document.getElementById("playlist-edit-id").value;
       await jsonFetch(editId ? `/api/playlists/${editId}` : "/api/playlists", {
@@ -678,6 +671,7 @@
     function editPlaylist(id) {
       const item = cachedPlaylists.find(row => row.id === id);
       if (!item) return;
+      showSection("playlists");
       document.getElementById("playlist-edit-id").value = item.id;
       document.getElementById("playlist-name").value = item.name;
       document.getElementById("playlist-description").value = item.description || "";
@@ -686,18 +680,16 @@
       document.getElementById("playlist-target-code").value = item.target_code || "";
       document.getElementById("playlist-enabled").checked = !!item.enabled;
       document.getElementById("playlist-save-button").textContent = "更新清單";
+      document.getElementById("playlist-form-title").textContent = "編輯播放清單";
       selectedPlaylistMediaIds = (item.items || []).sort((a, b) => a.position - b.position).map(x => x.media_id);
       renderPlaylistSelector();
       renderSelectedPlaylist();
-      window.scrollTo({ top: 0, behavior: "smooth" });
     }
 
     async function deletePlaylist(id) {
-      if (!confirm(`確定要刪除播放清單 #${id} 嗎？相關排程可能需要一併調整。`)) return;
+      if (appRole !== "central" || !confirm(`確定要刪除播放清單 #${id} 嗎？`)) return;
       await jsonFetch(`/api/playlists/${id}`, { method: "DELETE" });
-      if (document.getElementById("playlist-edit-id").value === String(id)) {
-        resetPlaylistForm();
-      }
+      if (document.getElementById("playlist-edit-id").value === String(id)) resetPlaylistForm();
       await loadAll();
     }
 
@@ -712,18 +704,14 @@
       document.getElementById("schedule-priority").value = "100";
       document.getElementById("schedule-enabled").checked = true;
       document.getElementById("schedule-save-button").textContent = "新增排程";
+      document.getElementById("schedule-form-title").textContent = "新增排程";
       setWeekdays([0, 1, 2, 3, 4, 5, 6]);
       renderPlaylistOptions();
-      if (cachedPlaylists.length) {
-        document.getElementById("schedule-playlist-id").value = String(cachedPlaylists[0].id);
-      }
+      if (cachedPlaylists.length) document.getElementById("schedule-playlist-id").value = String(cachedPlaylists[0].id);
     }
 
     async function saveSchedule() {
-      if (appRole !== "central") {
-        alert("client 模式不可直接維護排程。");
-        return;
-      }
+      if (appRole !== "central") return;
       const editId = document.getElementById("schedule-edit-id").value;
       await jsonFetch(editId ? `/api/schedules/${editId}` : "/api/schedules", {
         method: editId ? "PUT" : "POST",
@@ -747,6 +735,7 @@
     function editSchedule(id) {
       const item = cachedSchedules.find(row => row.id === id);
       if (!item) return;
+      showSection("schedules");
       document.getElementById("schedule-edit-id").value = item.id;
       document.getElementById("schedule-name").value = item.name;
       document.getElementById("schedule-playlist-id").value = String(item.playlist_id);
@@ -758,16 +747,14 @@
       document.getElementById("schedule-priority").value = item.priority;
       document.getElementById("schedule-enabled").checked = !!item.enabled;
       document.getElementById("schedule-save-button").textContent = "更新排程";
+      document.getElementById("schedule-form-title").textContent = "編輯排程";
       setWeekdays(item.weekdays);
-      window.scrollTo({ top: 0, behavior: "smooth" });
     }
 
     async function deleteSchedule(id) {
-      if (!confirm(`確定要刪除排程 #${id} 嗎？`)) return;
+      if (appRole !== "central" || !confirm(`確定要刪除排程 #${id} 嗎？`)) return;
       await jsonFetch(`/api/schedules/${id}`, { method: "DELETE" });
-      if (document.getElementById("schedule-edit-id").value === String(id)) {
-        resetScheduleForm();
-      }
+      if (document.getElementById("schedule-edit-id").value === String(id)) resetScheduleForm();
       await loadAll();
     }
 
@@ -799,9 +786,14 @@
     }
 
     async function runUpstreamSync() {
+      if (appRole === "central") {
+        await loadAll();
+        return;
+      }
       const centralBaseUrl = document.getElementById("settings-central-base-url").value.trim();
       if (!centralBaseUrl) {
         alert("請先設定中央管理端 URL。");
+        showSection("settings");
         return;
       }
       await jsonFetch("/api/sync/upstream", { method: "POST" });
@@ -809,10 +801,7 @@
     }
 
     async function buildPlaylistFromUploaded() {
-      if (appRole !== "central") {
-        alert("此功能僅限 central 模式。");
-        return;
-      }
+      if (appRole !== "central") return;
       const media = await jsonFetch("/api/media");
       if (!media.length) {
         alert("目前沒有影片可建立清單。");
@@ -820,44 +809,16 @@
       }
       const items = media.map((item, index) => ({ media_id: item.id, position: index + 1 }));
       const name = `auto-loop-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}`;
-      const payload = {
-        name,
-        description: "由後台自動建立的循環清單",
-        display_title: "輪播清單",
-        enabled: true,
-        items
-      };
       const playlist = await jsonFetch("/api/playlists", {
         method: "POST",
-        body: JSON.stringify(payload)
+        body: JSON.stringify({ name, description: "由後台自動建立的循環清單", display_title: "輪播清單", target_scope: "global", target_code: null, enabled: true, items })
       });
-      const schedulePayload = {
-        name: `${name}-schedule`,
-        playlist_id: playlist.id,
-        weekdays: [0, 1, 2, 3, 4, 5, 6],
-        start_time: "00:00",
-        end_time: "23:59",
-        play_count: 0,
-        priority: 1,
-        enabled: true
-      };
-      const schedule = await jsonFetch("/api/schedules", {
+      await jsonFetch("/api/schedules", {
         method: "POST",
-        body: JSON.stringify(schedulePayload)
+        body: JSON.stringify({ name: `${name}-schedule`, playlist_id: playlist.id, target_scope: "global", target_code: null, weekdays: [0, 1, 2, 3, 4, 5, 6], start_time: "00:00", end_time: "23:59", play_count: 0, priority: 1, enabled: true })
       });
-      selectedPlaylistMediaIds = media.map(item => item.id);
-      document.getElementById("playlist-name").value = name;
-      document.getElementById("playlist-description").value = "由後台自動建立的循環清單";
-      document.getElementById("playlist-display-title").value = "輪播清單";
-      document.getElementById("schedule-playlist-id").value = String(playlist.id);
-      document.getElementById("schedule-name").value = schedule.name;
-      document.getElementById("schedule-start").value = "00:00";
-      document.getElementById("schedule-end").value = "23:59";
-      document.getElementById("schedule-play-count").value = "0";
-      document.getElementById("schedule-priority").value = "1";
-      setWeekdays([0, 1, 2, 3, 4, 5, 6]);
       await loadAll();
-      alert(`已建立清單 #${playlist.id} 與排程 #${schedule.id}，前台會依時段自動無限循環播放。`);
+      showSection("schedules");
     }
 
     async function logoutAdmin() {
@@ -865,6 +826,7 @@
       window.location.href = "/admin-login";
     }
 
+    showSection("overview");
     resetMediaForm();
     resetPlaylistForm();
     resetScheduleForm();
