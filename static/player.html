@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>輪播前台</title>
+  <link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+  <div class="shell player-shell">
+    <header class="player-header">
+      <div>
+        <div class="brand" id="player-brand">Rotating Banner Player</div>
+        <div class="brand" id="playlist-title" style="font-size:28px;"></div>
+        <div class="hint" id="schedule-label">等待載入排程</div>
+      </div>
+      <div class="button-row">
+        <button class="secondary" id="playlist-toggle" type="button">影片清單</button>
+        <button class="secondary" id="fullscreen-toggle" type="button">全螢幕</button>
+      </div>
+    </header>
+    <main class="player-stage">
+      <video id="player-video" muted autoplay playsinline controls></video>
+      <aside class="empty-state player-drawer" id="playlist-drawer" style="display:none;">
+        <h3 style="margin-top:0;">影片清單</h3>
+        <div id="playlist-items" class="player-drawer-items"></div>
+      </aside>
+      <section class="empty-state" id="empty-state">
+        <h2>目前沒有可播放內容</h2>
+        <p id="empty-message">系統會定時重新查詢排程與清單。</p>
+      </section>
+    </main>
+  </div>
+  <script>
+    const video = document.getElementById("player-video");
+    const emptyState = document.getElementById("empty-state");
+    const emptyMessage = document.getElementById("empty-message");
+    const scheduleLabel = document.getElementById("schedule-label");
+    const playlistTitle = document.getElementById("playlist-title");
+    const playerBrand = document.getElementById("player-brand");
+    const playlistDrawer = document.getElementById("playlist-drawer");
+    const playlistItems = document.getElementById("playlist-items");
+    const playlistToggle = document.getElementById("playlist-toggle");
+    const fullscreenToggle = document.getElementById("fullscreen-toggle");
+
+    let currentScheduleId = null;
+    let currentItems = [];
+    let currentIndex = 0;
+    let attemptedDefaultFullscreen = false;
+
+    function renderEmpty(message) {
+      video.style.display = "none";
+      emptyState.style.display = "block";
+      emptyMessage.textContent = message;
+      scheduleLabel.textContent = "目前無有效排程";
+      playlistTitle.textContent = "";
+    }
+
+    function renderActive(payload) {
+      currentScheduleId = payload.schedule.id;
+      currentItems = payload.items || [];
+      currentIndex = 0;
+      playlistTitle.textContent = payload.schedule.playlist_display_title || "";
+      playerBrand.style.display = payload.ui?.show_player_brand ? "block" : "none";
+      scheduleLabel.textContent =
+        `${payload.schedule.name} / ${payload.schedule.playlist_name} / 已播 ${payload.schedule.current_play_count}` +
+        (payload.schedule.play_count ? ` / 限制 ${payload.schedule.play_count}` : " / 無次數上限");
+      video.style.display = "block";
+      emptyState.style.display = "none";
+      renderPlaylistDrawer();
+      playCurrent();
+    }
+
+    async function completeCycle() {
+      if (!currentScheduleId) return;
+      await fetch("/api/player/complete-cycle", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({schedule_id: currentScheduleId})
+      });
+    }
+
+    function playCurrent() {
+      if (!currentItems.length) {
+        renderEmpty("清單存在，但沒有已下載可播放的影片。");
+        return;
+      }
+      highlightCurrentItem();
+      video.src = currentItems[currentIndex].url;
+      video.play().catch(() => {
+        scheduleLabel.textContent += " / 若需自動播放聲音，請以 kiosk 模式或允許 autoplay 啟動";
+      });
+    }
+
+    function renderPlaylistDrawer() {
+      playlistItems.innerHTML = currentItems.map((item, index) => `
+        <button
+          class="list-card"
+          type="button"
+          onclick="jumpToVideo(${index})"
+          style="margin-bottom:8px;padding:10px;width:100%;text-align:left;background:rgba(255,255,255,0.03);color:var(--text);border:1px solid rgba(255,255,255,0.06);"
+        >
+          <div><span class="pill">${index + 1}</span>${item.title}</div>
+          <div class="small" style="margin-top:8px;">點擊此區塊即可跳播</div>
+        </button>
+      `).join("") || "<div class='small'>目前沒有影片。</div>";
+      highlightCurrentItem();
+    }
+
+    function highlightCurrentItem() {
+      const cards = playlistItems.querySelectorAll(".list-card");
+      cards.forEach((card, index) => {
+        card.style.outline = index === currentIndex ? "2px solid rgba(255, 183, 3, 0.65)" : "none";
+      });
+    }
+
+    window.jumpToVideo = function(index) {
+      if (index < 0 || index >= currentItems.length) return;
+      currentIndex = index;
+      playCurrent();
+    };
+
+    video.addEventListener("ended", async () => {
+      currentIndex += 1;
+      if (currentIndex >= currentItems.length) {
+        currentIndex = 0;
+        await completeCycle();
+        await refreshState(true);
+        return;
+      }
+      playCurrent();
+    });
+
+    async function ensureDefaultFullscreen(payload) {
+      if (attemptedDefaultFullscreen) return;
+      attemptedDefaultFullscreen = true;
+      if (!payload?.ui?.default_fullscreen) return;
+      if (document.fullscreenElement) return;
+      try {
+        await document.documentElement.requestFullscreen();
+      } catch (_) {
+      }
+    }
+
+    async function refreshState(forceReplay = false) {
+      const response = await fetch("/api/player/current");
+      const payload = await response.json();
+      ensureDefaultFullscreen(payload);
+      if (!payload.active) {
+        currentScheduleId = null;
+        currentItems = [];
+        renderEmpty(payload.message || "目前無可播放內容。");
+        return;
+      }
+
+      const changed =
+        currentScheduleId !== payload.schedule.id ||
+        currentItems.length !== payload.items.length ||
+        currentItems.some((item, index) => payload.items[index]?.url !== item.url);
+
+      if (changed || !video.src) {
+        renderActive(payload);
+      } else if (forceReplay) {
+        playerBrand.style.display = payload.ui?.show_player_brand ? "block" : "none";
+        playlistTitle.textContent = payload.schedule.playlist_display_title || "";
+        scheduleLabel.textContent =
+          `${payload.schedule.name} / ${payload.schedule.playlist_name} / 已播 ${payload.schedule.current_play_count}` +
+          (payload.schedule.play_count ? ` / 限制 ${payload.schedule.play_count}` : " / 無次數上限");
+        playCurrent();
+      } else {
+        playerBrand.style.display = payload.ui?.show_player_brand ? "block" : "none";
+        playlistTitle.textContent = payload.schedule.playlist_display_title || "";
+        scheduleLabel.textContent =
+          `${payload.schedule.name} / ${payload.schedule.playlist_name} / 已播 ${payload.schedule.current_play_count}` +
+          (payload.schedule.play_count ? ` / 限制 ${payload.schedule.play_count}` : " / 無次數上限");
+      }
+    }
+
+    playlistToggle.addEventListener("click", () => {
+      playlistDrawer.style.display = playlistDrawer.style.display === "none" ? "block" : "none";
+    });
+
+    fullscreenToggle.addEventListener("click", async () => {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+      } else {
+        await document.exitFullscreen();
+      }
+    });
+
+    playerBrand.style.display = "none";
+    renderEmpty("系統初始化中。");
+    refreshState();
+    setInterval(refreshState, 15000);
+  </script>
+</body>
+</html>

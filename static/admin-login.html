@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管理登入</title>
+  <link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+  <div class="shell player-stage">
+    <section class="empty-state" style="max-width:520px;">
+      <h2>管理後台登入</h2>
+      <p>Client 前台不可直接使用管理介面。請輸入管理密碼登入。</p>
+      <div class="stack">
+        <label>管理密碼<input id="admin-password" type="password" placeholder="請輸入管理密碼"></label>
+        <div class="button-row">
+          <button onclick="login()">登入</button>
+          <a href="/" style="color:#8ecae6;align-self:center;">回前台</a>
+        </div>
+        <div class="small" id="login-status"></div>
+      </div>
+    </section>
+  </div>
+  <script>
+    async function login() {
+      const password = document.getElementById("admin-password").value.trim();
+      const status = document.getElementById("login-status");
+      status.textContent = "";
+      const response = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ password })
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        status.textContent = payload.detail || "登入失敗";
+        return;
+      }
+      window.location.href = "/admin";
+    }
+  </script>
+</body>
+</html>
