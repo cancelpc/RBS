@@ -370,6 +370,8 @@ def list_schedules(_admin: bool = Depends(require_admin), db: Session = Depends(
             "target_scope": schedule.target_scope,
             "target_code": schedule.target_code,
             "weekdays": [int(day) for day in schedule.weekdays.split(",") if day != ""],
+            "start_date": schedule.start_date,
+            "end_date": schedule.end_date,
             "start_time": schedule.start_time,
             "end_time": schedule.end_time,
             "play_count": schedule.play_count,
@@ -396,6 +398,8 @@ def create_schedule(
         target_scope=payload.target_scope,
         target_code=payload.target_code,
         weekdays=",".join(str(day) for day in payload.weekdays),
+        start_date=payload.start_date,
+        end_date=payload.end_date,
         start_time=payload.start_time,
         end_time=payload.end_time,
         play_count=payload.play_count,
@@ -426,6 +430,8 @@ def update_schedule(
     schedule.target_scope = payload.target_scope
     schedule.target_code = payload.target_code
     schedule.weekdays = ",".join(str(day) for day in payload.weekdays)
+    schedule.start_date = payload.start_date
+    schedule.end_date = payload.end_date
     schedule.start_time = payload.start_time
     schedule.end_time = payload.end_time
     schedule.play_count = payload.play_count

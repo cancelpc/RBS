@@ -6,7 +6,7 @@ import secrets
 import shutil
 import threading
 import time
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -121,7 +121,19 @@ def current_minutes(value: datetime) -> int:
     return value.hour * 60 + value.minute
 
 
+def date_matches(now_dt: datetime, schedule: ScheduleRule) -> bool:
+    today = now_dt.date()
+    start_date = date.fromisoformat(schedule.start_date or "1970-01-01")
+    if today < start_date:
+        return False
+    if schedule.end_date and today > date.fromisoformat(schedule.end_date):
+        return False
+    return True
+
+
 def window_matches(now_dt: datetime, schedule: ScheduleRule) -> bool:
+    if not date_matches(now_dt, schedule):
+        return False
     weekday = now_dt.weekday()
     allowed_days = {int(item) for item in schedule.weekdays.split(",") if item != ""}
     if weekday not in allowed_days:
@@ -448,6 +460,8 @@ def current_manifest_payload(db: Session, client: Client | None = None) -> dict[
                 "target_scope": normalize_target_scope(schedule.target_scope),
                 "target_code": normalize_target_code(schedule.target_code),
                 "weekdays": [int(day) for day in schedule.weekdays.split(",") if day != ""],
+                "start_date": schedule.start_date,
+                "end_date": schedule.end_date,
                 "start_time": schedule.start_time,
                 "end_time": schedule.end_time,
                 "play_count": schedule.play_count,
@@ -667,6 +681,8 @@ def import_client_manifest(db: Session, manifest: dict[str, Any]) -> dict[str, A
                 playlist_id=playlist.id,
                 target_scope=normalize_target_scope(schedule_payload.get("target_scope")),
                 target_code=normalize_target_code(schedule_payload.get("target_code")),
+                start_date=schedule_payload.get("start_date", "1970-01-01"),
+                end_date=schedule_payload.get("end_date"),
                 start_time=schedule_payload["start_time"],
                 end_time=schedule_payload["end_time"],
             )
@@ -676,6 +692,8 @@ def import_client_manifest(db: Session, manifest: dict[str, Any]) -> dict[str, A
         existing.target_scope = normalize_target_scope(schedule_payload.get("target_scope"))
         existing.target_code = normalize_target_code(schedule_payload.get("target_code"))
         existing.weekdays = ",".join(str(day) for day in schedule_payload.get("weekdays", [0, 1, 2, 3, 4, 5, 6]))
+        existing.start_date = schedule_payload.get("start_date", "1970-01-01")
+        existing.end_date = schedule_payload.get("end_date")
         existing.start_time = schedule_payload["start_time"]
         existing.end_time = schedule_payload["end_time"]
         existing.play_count = schedule_payload.get("play_count", 0)
@@ -1123,8 +1141,13 @@ def ensure_schema(session_factory) -> None:
             db.execute(text("ALTER TABLE schedule_rules ADD COLUMN target_scope VARCHAR(20) DEFAULT 'global'"))
         if "target_code" not in schedule_columns:
             db.execute(text("ALTER TABLE schedule_rules ADD COLUMN target_code VARCHAR(200)"))
+        if "start_date" not in schedule_columns:
+            db.execute(text("ALTER TABLE schedule_rules ADD COLUMN start_date VARCHAR(10) DEFAULT '1970-01-01'"))
+        if "end_date" not in schedule_columns:
+            db.execute(text("ALTER TABLE schedule_rules ADD COLUMN end_date VARCHAR(10)"))
         db.execute(text("UPDATE playlists SET target_scope = 'global' WHERE target_scope IS NULL OR target_scope = ''"))
         db.execute(text("UPDATE schedule_rules SET target_scope = 'global' WHERE target_scope IS NULL OR target_scope = ''"))
+        db.execute(text("UPDATE schedule_rules SET start_date = '1970-01-01' WHERE start_date IS NULL OR start_date = ''"))
         db.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_media_items_media_code ON media_items (media_code)"))
         db.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_playlists_playlist_code ON playlists (playlist_code)"))
         db.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_schedule_rules_schedule_code ON schedule_rules (schedule_code)"))

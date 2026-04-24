@@ -212,6 +212,11 @@
                 </div>
               </div>
               <div class="dual-grid">
+                <label>開始日期<input id="schedule-start-date" type="date"></label>
+                <label>結束日期<input id="schedule-end-date" type="date"></label>
+              </div>
+              <label class="checkbox-label"><input type="checkbox" id="schedule-no-end-date" checked onchange="toggleScheduleEndDate()"> 無結束日期</label>
+              <div class="dual-grid">
                 <label>開始時間<input id="schedule-start" value="08:00"></label>
                 <label>結束時間<input id="schedule-end" value="18:00"></label>
               </div>
@@ -391,12 +396,16 @@
       `).join("") || emptyState("尚無播放清單");
     }
 
+    function scheduleDateLabel(item) {
+      return `${item.start_date || "1970-01-01"} - ${item.end_date || "無結束日期"}`;
+    }
+
     function renderScheduleList() {
       document.getElementById("schedule-list").innerHTML = cachedSchedules.map(item => `
         <article class="data-row">
           <div>
             <strong>${escapeHtml(item.name)}</strong>
-            <div class="small">${escapeHtml(targetLabel(item.target_scope, item.target_code))} / ${escapeHtml(item.start_time)}-${escapeHtml(item.end_time)} / 優先序 ${item.priority}</div>
+            <div class="small">${escapeHtml(targetLabel(item.target_scope, item.target_code))} / ${escapeHtml(scheduleDateLabel(item))} / ${escapeHtml(item.start_time)}-${escapeHtml(item.end_time)} / 優先序 ${item.priority}</div>
             <div class="small">星期 ${item.weekdays.join(",")} / 次數 ${item.play_count} / 已播 ${item.current_play_count}</div>
           </div>
           <div class="status-pill ${item.enabled ? "ok" : "muted"}">${item.enabled ? "啟用" : "停用"}</div>
@@ -693,11 +702,27 @@
       await loadAll();
     }
 
+    function todayInputValue() {
+      const now = new Date();
+      const offsetMs = now.getTimezoneOffset() * 60 * 1000;
+      return new Date(now.getTime() - offsetMs).toISOString().slice(0, 10);
+    }
+
+    function toggleScheduleEndDate() {
+      const noEndDate = document.getElementById("schedule-no-end-date").checked;
+      const endDateInput = document.getElementById("schedule-end-date");
+      endDateInput.disabled = noEndDate;
+      if (noEndDate) endDateInput.value = "";
+    }
+
     function resetScheduleForm() {
       document.getElementById("schedule-edit-id").value = "";
       document.getElementById("schedule-name").value = "";
       document.getElementById("schedule-target-scope").value = "global";
       document.getElementById("schedule-target-code").value = "";
+      document.getElementById("schedule-start-date").value = todayInputValue();
+      document.getElementById("schedule-no-end-date").checked = true;
+      toggleScheduleEndDate();
       document.getElementById("schedule-start").value = "08:00";
       document.getElementById("schedule-end").value = "18:00";
       document.getElementById("schedule-play-count").value = "0";
@@ -721,6 +746,8 @@
           target_scope: document.getElementById("schedule-target-scope").value,
           target_code: document.getElementById("schedule-target-code").value.trim() || null,
           weekdays: selectedWeekdays,
+          start_date: document.getElementById("schedule-start-date").value,
+          end_date: document.getElementById("schedule-no-end-date").checked ? null : (document.getElementById("schedule-end-date").value || null),
           start_time: document.getElementById("schedule-start").value,
           end_time: document.getElementById("schedule-end").value,
           play_count: Number(document.getElementById("schedule-play-count").value),
@@ -741,6 +768,10 @@
       document.getElementById("schedule-playlist-id").value = String(item.playlist_id);
       document.getElementById("schedule-target-scope").value = item.target_scope || "global";
       document.getElementById("schedule-target-code").value = item.target_code || "";
+      document.getElementById("schedule-start-date").value = item.start_date || todayInputValue();
+      document.getElementById("schedule-no-end-date").checked = !item.end_date;
+      document.getElementById("schedule-end-date").value = item.end_date || "";
+      toggleScheduleEndDate();
       document.getElementById("schedule-start").value = item.start_time;
       document.getElementById("schedule-end").value = item.end_time;
       document.getElementById("schedule-play-count").value = item.play_count;
@@ -815,7 +846,7 @@
       });
       await jsonFetch("/api/schedules", {
         method: "POST",
-        body: JSON.stringify({ name: `${name}-schedule`, playlist_id: playlist.id, target_scope: "global", target_code: null, weekdays: [0, 1, 2, 3, 4, 5, 6], start_time: "00:00", end_time: "23:59", play_count: 0, priority: 1, enabled: true })
+        body: JSON.stringify({ name: `${name}-schedule`, playlist_id: playlist.id, target_scope: "global", target_code: null, weekdays: [0, 1, 2, 3, 4, 5, 6], start_date: todayInputValue(), end_date: null, start_time: "00:00", end_time: "23:59", play_count: 0, priority: 1, enabled: true })
       });
       await loadAll();
       showSection("schedules");

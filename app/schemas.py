@@ -1,4 +1,6 @@
-from pydantic import BaseModel, Field, field_validator
+from datetime import date
+
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class MediaCreate(BaseModel):
@@ -48,6 +50,8 @@ class ScheduleCreate(BaseModel):
     target_scope: str = Field(default="global", pattern=r"^(global|group|site)$")
     target_code: str | None = Field(default=None, max_length=200)
     weekdays: list[int] = Field(default_factory=lambda: [0, 1, 2, 3, 4, 5, 6])
+    start_date: str = Field(default="1970-01-01", pattern=r"^\d{4}-\d{2}-\d{2}$")
+    end_date: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
     start_time: str = Field(pattern=r"^\d{2}:\d{2}$")
     end_time: str = Field(pattern=r"^\d{2}:\d{2}$")
     play_count: int = Field(default=0, ge=0)
@@ -71,6 +75,23 @@ class ScheduleCreate(BaseModel):
         if int(hour) > 23 or int(minute) > 59:
             raise ValueError("時間必須使用 HH:MM，且小時 00-23、分鐘 00-59。")
         return value
+
+    @field_validator("start_date", "end_date")
+    @classmethod
+    def validate_iso_date(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        try:
+            date.fromisoformat(value)
+        except ValueError as exc:
+            raise ValueError("日期必須使用 YYYY-MM-DD 格式。") from exc
+        return value
+
+    @model_validator(mode="after")
+    def validate_date_range(self) -> "ScheduleCreate":
+        if self.end_date is not None and date.fromisoformat(self.end_date) < date.fromisoformat(self.start_date):
+            raise ValueError("結束日期不可早於開始日期。")
+        return self
 
 
 class ScheduleRead(ScheduleCreate):
