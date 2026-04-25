@@ -12,6 +12,7 @@
 - [問題排除](docs/TROUBLESHOOTING.md)
 - [需求規格](docs/SPECIFICATION.md)
 - [API 說明](docs/API.md)
+- [系統架構圖](docs/SYSTEM_ARCHITECTURE.md)
 - [中央管理端 + 本地 Client 架構草案](docs/CENTRAL_CLIENT_ARCHITECTURE.md)
 
 ## 目前實作範圍

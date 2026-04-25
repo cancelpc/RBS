@@ -1,0 +1,56 @@
+flowchart LR
+    Admin["管理員瀏覽器"]
+
+    subgraph Central["中央管理端 BANNER_APP_ROLE=central"]
+        CentralAdmin["/admin 管理後台"]
+        CentralAPI["FastAPI API"]
+        CentralDB[("中央 SQLite / 可擴充 PostgreSQL")]
+        ManifestStore["storage/manifests"]
+        CentralMedia["storage/media 或獨立檔案服務"]
+        Updates["storage/updates"]
+    end
+
+    subgraph ClientA["本地 Client A BANNER_APP_ROLE=client"]
+        BrowserA["Kiosk 瀏覽器 / Player"]
+        LocalAPIA["本機 FastAPI"]
+        LocalDBA[("本機 SQLite")]
+        LocalMediaA["本機 storage/media"]
+        SyncA["背景同步工作"]
+        OutboxA["client_outbox_events"]
+    end
+
+    subgraph ClientB["本地 Client B"]
+        BrowserB["Kiosk 瀏覽器 / Player"]
+        LocalAPIB["本機 FastAPI"]
+        LocalDBB[("本機 SQLite")]
+        LocalMediaB["本機 storage/media"]
+        SyncB["背景同步工作"]
+        OutboxB["client_outbox_events"]
+    end
+
+    Admin -->|維護影片 / 清單 / 排程 / 設定| CentralAdmin
+    CentralAdmin --> CentralAPI
+    CentralAPI --> CentralDB
+    CentralAPI --> ManifestStore
+    CentralAPI --> CentralMedia
+    CentralAPI --> Updates
+
+    SyncA -->|註冊 / metadata / manifest / 回報| CentralAPI
+    SyncA -->|下載影片| CentralMedia
+    SyncA --> LocalDBA
+    SyncA --> LocalMediaA
+    SyncA --> OutboxA
+    BrowserA -->|每 15 秒查本機目前排程| LocalAPIA
+    LocalAPIA --> LocalDBA
+    BrowserA -->|播放本機影片| LocalMediaA
+    OutboxA -->|中央恢復後補送| CentralAPI
+
+    SyncB -->|註冊 / metadata / manifest / 回報| CentralAPI
+    SyncB -->|下載影片| CentralMedia
+    SyncB --> LocalDBB
+    SyncB --> LocalMediaB
+    SyncB --> OutboxB
+    BrowserB -->|查本機目前排程| LocalAPIB
+    LocalAPIB --> LocalDBB
+    BrowserB -->|播放本機影片| LocalMediaB
+    OutboxB -->|中央恢復後補送| CentralAPI
