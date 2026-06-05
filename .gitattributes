@@ -4,8 +4,8 @@
 *.ps1 text eol=crlf working-tree-encoding=UTF-8
 *.psm1 text eol=crlf working-tree-encoding=UTF-8
 *.psd1 text eol=crlf working-tree-encoding=UTF-8
-*.bat text eol=crlf working-tree-encoding=BIG5
-*.cmd text eol=crlf working-tree-encoding=BIG5
+*.bat text eol=crlf working-tree-encoding=CP950
+*.cmd text eol=crlf working-tree-encoding=CP950
 
 # Documents and text data
 *.txt text eol=crlf
