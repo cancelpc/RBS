@@ -1,1 +1,47 @@
-* text=auto eol=lf
+* text=auto eol=crlf
+
+# Windows scripts
+*.ps1 text eol=crlf working-tree-encoding=UTF-8
+*.psm1 text eol=crlf working-tree-encoding=UTF-8
+*.psd1 text eol=crlf working-tree-encoding=UTF-8
+*.bat text eol=crlf working-tree-encoding=BIG5
+*.cmd text eol=crlf working-tree-encoding=BIG5
+
+# Documents and text data
+*.txt text eol=crlf
+*.md text eol=crlf
+*.markdown text eol=crlf
+*.rst text eol=crlf
+*.json text eol=crlf
+*.jsonc text eol=crlf
+*.xml text eol=crlf
+*.yml text eol=crlf
+*.yaml text eol=crlf
+*.ini text eol=crlf
+*.cfg text eol=crlf
+*.conf text eol=crlf
+*.gitignore text eol=crlf
+*.gitattributes text eol=crlf
+*.editorconfig text eol=crlf
+
+# Common binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.7z binary
+*.rar binary
+*.gz binary
+*.tar binary
+*.exe binary
+*.dll binary
+*.pdb binary
+*.doc binary
+*.docx binary
+*.xls binary
+*.xlsx binary
+*.ppt binary
+*.pptx binary
